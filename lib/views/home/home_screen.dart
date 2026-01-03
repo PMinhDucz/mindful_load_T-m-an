@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../configs/app_colors.dart';
 import 'widgets/checkin_modal.dart';
+import 'widgets/mood_statistics.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/activity_controller.dart';
+import '../../models/activity_model.dart'; // Fix: Import to see Mood.label extension
+// import 'widgets/activity_item.dart'; // We can inline this for now
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -33,7 +38,13 @@ class HomeScreen extends StatelessWidget {
                   // Menu Icon (Left)
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Icon(Icons.menu, color: Colors.white),
+                    child: IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: () {
+                        // Open the Drawer from the parent Scaffold (NavScreen)
+                        Scaffold.of(context).openDrawer();
+                      },
+                    ),
                   ),
                   // Logo (Center)
                   Image.asset(
@@ -112,32 +123,90 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // Recommendations / Quote (Replacement for Chart)
+              const SizedBox(height: 40),
+
+              // RECENT ACTIVITY (Timeline)
               Text(
-                "Daily Advice",
+                "Recent Activity",
                 style: Theme.of(context).textTheme.labelMedium,
               ),
               const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.lightbulb_outline, color: Colors.amber),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        "Take a deep breath before your next meeting.",
-                        style: TextStyle(color: Colors.grey[300]),
+
+              Consumer<ActivityController>(
+                builder: (context, controller, child) {
+                  final logs = controller.logs;
+                  if (logs.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    ),
-                  ],
-                ),
+                      child: Center(
+                        child: Text("No check-ins yet. Start now!",
+                            style: TextStyle(color: Colors.grey)),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: logs.length > 5 ? 5 : logs.length, // Show max 5
+                    separatorBuilder: (c, i) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final log = logs[index];
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Row(
+                          children: [
+                            // Mood Icon (Placeholder)
+                            CircleAvatar(
+                              backgroundColor: Colors.white10,
+                              child: Text(
+                                log.mood.label.substring(0, 1), // First letter
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+
+                            // Info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    log.mood.label,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "${log.timestamp.hour}:${log.timestamp.minute.toString().padLeft(2, '0')} • ${log.tags.join(', ')}",
+                                    style: TextStyle(
+                                        color: Colors.grey, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
+
+              const SizedBox(height: 40), // Bottom padding
             ],
           ),
         ),

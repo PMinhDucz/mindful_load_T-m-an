@@ -15,13 +15,53 @@ class CheckInModal extends StatefulWidget {
 class _CheckInModalState extends State<CheckInModal> {
   Mood? _selectedMood;
   final List<String> _selectedTags = [];
+  String _note = "";
 
-  // Hardcoded for now, will allow custom tags later (NFR3)
-  final Map<String, List<String>> _tagCategories = {
-    'Where?': ['Home', 'Company', 'Road', 'Coffee'],
-    'What?': ['Meeting', 'Code', 'Facebook', 'Eating', 'Deadline'],
-    'With whom?': ['Family', 'Alone', 'Boss', 'Colleague', 'Wife'],
-  };
+  // Hardcoded map removed. Using Controller data.
+
+  void _showAddTagDialog(String category, ActivityController controller) {
+    String newTag = "";
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E), // Dark Dialog
+        title: Text("Add to $category",
+            style: const TextStyle(color: Colors.white)),
+        content: TextField(
+          autofocus: true,
+          style:
+              const TextStyle(color: Colors.white), // White text on Dark Dialog
+          decoration: const InputDecoration(
+            hintText: "Enter tag name",
+            hintStyle: TextStyle(color: Colors.white54),
+            enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white54)),
+            focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.green)), // Sage Green
+          ),
+          onChanged: (value) => newTag = value,
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: Text("Add", style: TextStyle(color: AppColors.primary)),
+            onPressed: () {
+              if (newTag.isNotEmpty) {
+                controller.addCustomTag(category, newTag);
+                setState(() {
+                  _selectedTags.add(newTag); // Auto select new tag
+                });
+                Navigator.pop(context);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   void _onSave() {
     if (_selectedMood == null) return;
@@ -30,10 +70,27 @@ class _CheckInModalState extends State<CheckInModal> {
     context.read<ActivityController>().addLog(
           _selectedMood!,
           _selectedTags,
-          "Check-in at ${DateTime.now().hour}:${DateTime.now().minute}",
+          _note.isNotEmpty ? _note : null,
         );
 
     Navigator.pop(context); // Close modal
+  }
+
+  IconData _getMoodIcon(Mood mood) {
+    switch (mood) {
+      case Mood.good:
+        return Icons.sentiment_very_satisfied;
+      case Mood.neutral:
+        return Icons.sentiment_neutral;
+      case Mood.sad:
+        return Icons.sentiment_dissatisfied;
+      case Mood.angry:
+        return Icons.sentiment_very_dissatisfied;
+      case Mood.anxious:
+        return Icons.sick_outlined; // Or Icons.sentiment_satisfied_alt
+      case Mood.stress:
+        return Icons.battery_alert;
+    }
   }
 
   @override
@@ -60,138 +117,234 @@ class _CheckInModalState extends State<CheckInModal> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
 
-          // Title
-          Center(
-            child: Image.asset(
-              'assets/images/logo_white.png',
-              width: 50, // Adjust size as needed
-              height: 50,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "How do you feel?",
-            style: Theme.of(context).textTheme.titleLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-
-          // Mood Grid
-          Expanded(
-            flex: 0,
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.8,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: Mood.values.length,
-              itemBuilder: (context, index) {
-                final mood = Mood.values[index];
-                final isSelected = _selectedMood == mood;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedMood = mood),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primary.withOpacity(0.2)
-                          : AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: isSelected
-                          ? Border.all(color: AppColors.primary, width: 2)
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Placeholder Icon (Use images in real app)
-                        const CircleAvatar(
-                          radius: 20,
-                          backgroundColor:
-                              Colors.white, // Placeholder for Emoji Image
-                          child: Icon(Icons.face, color: Colors.black),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          mood.label,
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelMedium
-                              ?.copyWith(
-                                color:
-                                    isSelected ? AppColors.white : Colors.grey,
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Tags Sections (Scrollable)
+          // SCROLLABLE CONTENT (Mood + Tags)
           Expanded(
             child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 20),
               child: Column(
-                children: _tagCategories.entries.map((entry) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(entry.key,
-                          style: Theme.of(context).textTheme.labelMedium),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: entry.value.map((tag) {
-                          final isSelected = _selectedTags.contains(tag);
-                          return FilterChip(
-                            label: Text(tag),
-                            selected: isSelected,
-                            onSelected: (bool selected) {
-                              setState(() {
-                                if (selected) {
-                                  _selectedTags.add(tag);
-                                } else {
-                                  _selectedTags.remove(tag);
-                                }
-                              });
-                            },
-                            backgroundColor: Colors.white,
-                            selectedColor: AppColors.primary,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : Colors.black,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide.none,
-                            ),
+                children: [
+                  // Title & Logo
+                  const SizedBox(height: 10),
+                  Image.asset(
+                    'assets/images/logo_white.png',
+                    width: 50,
+                    height: 50,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "How do you feel?",
+                    style: Theme.of(context).textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Mood Grid
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      childAspectRatio: 0.8,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: Mood.values.length,
+                    itemBuilder: (context, index) {
+                      final mood = Mood.values[index];
+                      final isSelected = _selectedMood == mood;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedMood = mood),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF2C2C2E), // Dark card background
+                            borderRadius: BorderRadius.circular(24),
+                            border: isSelected
+                                ? Border.all(color: Colors.white, width: 2)
+                                : null,
+                          ),
+                          child: Stack(
+                            alignment: Alignment.topCenter,
+                            children: [
+                              // "Bookmark" Shape Background
+                              Container(
+                                width: 50,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: const BorderRadius.vertical(
+                                      bottom: Radius.circular(25)),
+                                ),
+                              ),
+                              // Content
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 10),
+                                  // Emoji Circle (Placeholder)
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: mood.color.withOpacity(0.3),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      _getMoodIcon(mood),
+                                      color: mood.color,
+                                      size: 32, // Increased size
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    mood.label,
+                                    style: const TextStyle(
+                                      color: Colors
+                                          .white, // Pure white for better contrast
+                                      fontSize: 13,
+                                      fontWeight:
+                                          FontWeight.w600, // Thicker font
+                                      height: 1.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // Tags Sections
+                  Consumer<ActivityController>(
+                    builder: (context, controller, child) {
+                      return Column(
+                        children: controller.tagCategories.entries.map((entry) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(entry.key,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium),
+                              ),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    ...entry.value.map((tag) {
+                                      final isSelected =
+                                          _selectedTags.contains(tag);
+                                      return FilterChip(
+                                        label: Text(tag),
+                                        selected: isSelected,
+                                        onSelected: (bool selected) {
+                                          setState(() {
+                                            if (selected) {
+                                              _selectedTags.add(tag);
+                                            } else {
+                                              _selectedTags.remove(tag);
+                                            }
+                                          });
+                                        },
+                                        backgroundColor: Colors.white,
+                                        selectedColor: AppColors.primary,
+                                        labelStyle: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.black,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                          side: BorderSide.none,
+                                        ),
+                                      );
+                                    }),
+                                    // Add "+" Button
+                                    ActionChip(
+                                      label: Icon(Icons.add,
+                                          size: 18, color: Colors.black),
+                                      padding: EdgeInsets.zero,
+                                      backgroundColor: Colors.white,
+                                      shape: CircleBorder(), // Circular shape
+                                      onPressed: () {
+                                        _showAddTagDialog(
+                                            entry.key, controller);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                           );
                         }).toList(),
+                      );
+                    },
+                  ),
+
+                  // Note Section (Micro-Journal)
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("Note (Optional)",
+                        style: Theme.of(context).textTheme.labelMedium),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    style: const TextStyle(
+                        color: Colors.black), // FIX: Force Black Text
+                    decoration: InputDecoration(
+                      hintText: "Why do you feel this way?",
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                }).toList(),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                    ),
+                    onChanged: (value) {
+                      _note = value;
+                    },
+                    maxLines: 2,
+                  ),
+                ],
               ),
             ),
           ),
 
-          // Save Button
+          // Save Button (Fixed at Bottom)
           if (_selectedMood != null)
-            ElevatedButton(
-              onPressed: _onSave,
-              child: const Text("SAVE CHECK-IN"),
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _onSave,
+                  child: const Text("SAVE CHECK-IN",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
             ),
         ],
       ),

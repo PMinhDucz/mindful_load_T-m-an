@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../configs/app_colors.dart';
-import '../../configs/routes.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/auth_controller.dart';
+import 'register_screen.dart';
+import '../home/nav_screen.dart';
 
 class LoginScreen extends StatefulWidget {
+  static const routeName = '/login';
   const LoginScreen({super.key});
 
   @override
@@ -10,161 +14,176 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controller để quản lý dữ liệu nhập
-  final _emailController = TextEditingController();
-  final _passController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _submit() async {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vui lòng điền đầy đủ thông tin')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await Provider.of<AuthController>(context, listen: false).login(
+        _usernameController.text,
+        _passwordController.text,
+      );
+      // Login Success -> Navigate to Home
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const NavScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // 1. Lấy kích thước màn hình
-    final size = MediaQuery.of(context).size;
-    final double screenHeight = size.height;
-    final double screenWidth = size.width;
-
     return Scaffold(
-      backgroundColor: AppColors.background,
-      // SafeArea để tránh tai thỏ
-      body: SafeArea(
-        // 2. QUAN TRỌNG: Dùng SingleChildScrollView để cuộn khi bàn phím hiện lên
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08), // Lề 2 bên 8%
+      backgroundColor: const Color(0xFF1C1C1E),
+      resizeToAvoidBottomInset: false,
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 60),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, // Căn trái toàn bộ
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Đo khoảng cách từ trên xuống (dùng % chiều cao màn hình)
-                SizedBox(height: screenHeight * 0.05),
-
-                // --- LOGO & TIÊU ĐỀ ---
-                Center(
+                Align(
+                  alignment: Alignment.centerLeft,
                   child: Image.asset(
-                    'assets/images/logo_white.png', // Nhớ thay ảnh thật
-                    width: screenWidth * 0.2, // Logo rộng 20% màn hình
-                    height: screenWidth * 0.2,
+                    'assets/images/logo_white.png',
+                    height: 40,
+                    width: 40,
                   ),
                 ),
-
-                SizedBox(height: screenHeight * 0.03),
-
-                const Text(
-                  "Sign In",
-                  style: TextStyle(
-                      fontFamily: 'Serif',
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                const Text(
-                  "Sign in now to personalize your experience",
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-
-                SizedBox(height: screenHeight * 0.05), // Khoảng cách đến Form
-
-                // --- FORM NHẬP LIỆU ---
-
-                // Ô Email
-                const SizedBox(height: 8),
-                _buildTextField(
-                    controller: _emailController,
-                    hint: "Email Address"
-                ),
-
                 const SizedBox(height: 20),
-
-                // Ô Password
+                const Text(
+                  'Sign In',
+                  style: TextStyle(
+                    fontFamily: 'Serif',
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                _buildTextField(
-                    controller: _passController,
-                    hint: "Password",
-                    isPassword: true
+                const Text(
+                  'Sign in now to personalize your\nexperience',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white60,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 48),
+
+                // Inputs
+                TextField(
+                  controller: _usernameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Email Address',
+                    labelStyle: TextStyle(color: Colors.grey),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey)),
+                    focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white)),
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    labelStyle: TextStyle(color: Colors.grey),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey)),
+                    focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white)),
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
 
-                // Quên mật khẩu
+                const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {},
-                    child: const Text("Forgot Password?", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    child: const Text('Forgot Password?',
+                        style: TextStyle(color: Colors.white60, fontSize: 12)),
                   ),
                 ),
 
-                SizedBox(height: screenHeight * 0.05), // Khoảng cách đến nút
+                const SizedBox(height: 24),
 
-                // --- NÚT LOGIN ---
-                SizedBox(
-                  width: double.infinity,
-                  height: 50, // Nút bấm nên fix cứng chiều cao để dễ bấm
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                // Login Button
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF759E8E),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        'Login',
+                        style: GoogleFonts.alegreyaSans(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                    onPressed: () {
-                      // Giả lập login thành công
-                      Navigator.pushNamed(context, AppRoutes.home);
-                    },
-                    child: const Text("Login", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-                ),
 
-                SizedBox(height: screenHeight * 0.02),
-
-                // --- DÒNG CUỐI CÙNG ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text("Don't have an account? ", style: TextStyle(color: Colors.grey)),
-                    GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.register),
-                      child: const Text("Sign Up", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-
-                // Khoảng trống dưới cùng để khi cuộn không bị sát đáy
                 const SizedBox(height: 20),
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                            builder: (_) => const RegisterScreen()),
+                      );
+                    },
+                    child: RichText(
+                      text: const TextSpan(
+                        text: "Don't have an account? ",
+                        style: TextStyle(color: Colors.white70),
+                        children: [
+                          TextSpan(
+                            text: 'Sign Up',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  // --- HÀM TÁCH CODE (REUSABLE WIDGETS) ---
-  // Viết tách ra thế này để code chính đỡ rối và dễ sửa style đồng loạt
-
-  Widget _buildLabel(String text) {
-    return Text(
-        text,
-        style: const TextStyle(color: Colors.grey, fontSize: 12)
-    );
-  }
-
-  Widget _buildTextField({required TextEditingController controller, required String hint, bool isPassword = false}) {
-    return TextField(
-      controller: controller,
-      obscureText: isPassword,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey.withOpacity(0.5)),
-        filled: true,
-        fillColor: Colors.transparent, // Hoặc Colors.grey[900] nếu muốn có nền
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 0),
-        // Gạch chân mặc định
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey),
-        ),
-        // Gạch chân khi bấm vào (Màu xanh)
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.primary, width: 2),
-        ),
+        ],
       ),
     );
   }

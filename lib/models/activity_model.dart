@@ -1,42 +1,65 @@
+import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 enum Mood {
-  veryGood,
   good,
   neutral,
-  bad,
-  veryBad, // Equivalent to Angry/Stress
+  sad,
+  angry,
+  anxious,
+  stress,
 }
 
 // Extension to get display data for Mood
 extension MoodExtension on Mood {
   String get label {
     switch (this) {
-      case Mood.veryGood:
-        return 'Happy';
       case Mood.good:
-        return 'Good';
+        return 'Feeling\nGood';
       case Mood.neutral:
-        return 'Neutral';
-      case Mood.bad:
-        return 'Sad';
-      case Mood.veryBad:
-        return 'Stress';
+        return 'Feeling\nNeutral';
+      case Mood.sad:
+        return 'Feeling\nSad';
+      case Mood.angry:
+        return 'Feeling\nAngry';
+      case Mood.anxious:
+        return 'Feeling\nAnxious';
+      case Mood.stress:
+        return 'Feeling\nStress';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case Mood.good:
+        return const Color(0xFFFFC107); // Amber (Darker Yellow)
+      case Mood.neutral:
+        return const Color(0xFF64B5F6); // Blue 300 (Darker)
+      case Mood.sad:
+        return const Color(0xFFE57373); // Red 300 (Darker)
+      case Mood.angry:
+        return const Color(0xFFC62828); // Red 800 (Darker)
+      case Mood.anxious:
+        return const Color(0xFFFFB74D); // Orange 300 (Darker)
+      case Mood.stress:
+        return const Color(0xFF90A4AE); // Blue Grey 300 (Darker)
     }
   }
 
   String get assetPath {
     // Placeholder assets, will need to be mapped to actual files
     switch (this) {
-      case Mood.veryGood:
-        return 'assets/icons/happy.png';
       case Mood.good:
-        return 'assets/icons/good.png';
+        return 'assets/icons/happy.png';
       case Mood.neutral:
         return 'assets/icons/neutral.png';
-      case Mood.bad:
+      case Mood.sad:
         return 'assets/icons/sad.png';
-      case Mood.veryBad:
+      case Mood.angry:
+        return 'assets/icons/stress.png'; // Placeholder
+      case Mood.anxious:
+        return 'assets/icons/stress.png'; // Placeholder
+      case Mood.stress:
         return 'assets/icons/stress.png';
     }
   }

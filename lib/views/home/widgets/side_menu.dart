@@ -56,12 +56,7 @@ class _SideMenuState extends State<SideMenu> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Colors.grey[400],
-                      child: const Icon(Icons.person,
-                          color: Colors.white, size: 30),
-                    ),
+                    _buildAvatar(user.avatarIndex),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -79,9 +74,11 @@ class _SideMenuState extends State<SideMenu> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            "Vietnam", // Location placeholder (keep simple for now)
-                            style: TextStyle(
+                          Text(
+                            (user.username?.contains('@') ?? false)
+                                ? user.username!
+                                : "@${user.username ?? 'user'}",
+                            style: const TextStyle(
                               color: Colors.grey,
                               fontSize: 12,
                             ),
@@ -100,8 +97,8 @@ class _SideMenuState extends State<SideMenu> {
                 children: [
                   _buildMenuItem("Management",
                       hasSubmenu: true, onTap: _comingSoon),
-                  _buildMenuItem("Change Language",
-                      hasSubmenu: true, onTap: _showLanguageDialog),
+                  // _buildMenuItem("Change Language",
+                  //     hasSubmenu: true, onTap: _showLanguageDialog),
                   _buildDivider(),
                   _buildMenuItem("Downloads", onTap: _comingSoon),
                   _buildDivider(),
@@ -184,6 +181,35 @@ class _SideMenuState extends State<SideMenu> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAvatar(int index) {
+    if (index == 0) {
+      return CircleAvatar(
+        radius: 24,
+        backgroundColor: Colors.grey[400],
+        backgroundImage: const AssetImage('assets/images/logo_white.png'),
+      );
+    }
+    final colors = [
+      Colors.blue,
+      Colors.pink,
+      Colors.amber,
+      Colors.green,
+      Colors.purple
+    ];
+    final icons = [
+      Icons.face,
+      Icons.face_3,
+      Icons.emoji_emotions,
+      Icons.smart_toy,
+      Icons.pets
+    ];
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: colors[index - 1],
+      child: Icon(icons[index - 1], color: Colors.white, size: 30),
     );
   }
 

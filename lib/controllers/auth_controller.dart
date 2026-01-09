@@ -8,12 +8,17 @@ class AuthController extends ChangeNotifier {
   String? _token;
   String? _userId;
   String? _fullName;
+  String? _username;
+  int _avatarIndex = 0; // Default avatar
 
   bool get isAuthenticated => _token != null;
   String? get token => _token;
   String? get userId => _userId;
   String? get fullName => _fullName;
-  bool _isFirstLogin = true; // Default
+  String? get username => _username;
+  int get avatarIndex => _avatarIndex;
+
+  bool _isFirstLogin = true;
   bool get isFirstLogin => _isFirstLogin;
 
   String get baseUrl {
@@ -33,8 +38,27 @@ class AuthController extends ChangeNotifier {
       _token = extractedUserData['token'];
       _userId = extractedUserData['userId'];
       _fullName = extractedUserData['fullName'];
-      _isFirstLogin = false; // Auto login means they have been here before
+      _username = extractedUserData['username'];
+      _avatarIndex = extractedUserData['avatarIndex'] ?? 0; // Load avatar
+      _isFirstLogin = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> setAvatar(int index) async {
+    _avatarIndex = index;
+    notifyListeners();
+    // Persist
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('userData')) {
+      final userData =
+          json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+      userData['avatarIndex'] = index;
+      await prefs.setString('userData', json.encode(userData));
+    }
+    // Also save permanently for this user ID (survives logout)
+    if (_userId != null) {
+      await prefs.setInt('avatar_preference_$_userId', index);
     }
   }
 
@@ -56,7 +80,6 @@ class AuthController extends ChangeNotifier {
       if (response.statusCode != 201) {
         throw HttpException(responseData['error']);
       }
-      // Registration successful, usually redirect to Login
     } catch (error) {
       rethrow;
     }
@@ -82,9 +105,18 @@ class AuthController extends ChangeNotifier {
       _token = responseData['token'];
       _userId = responseData['user']['id'].toString();
       _fullName = responseData['user']['fullName'];
+      _username = responseData['user']['username'];
+
+      // Load persistent avatar if exists
+      final prefs = await SharedPreferences.getInstance();
+      final avatarKey = 'avatar_preference_$_userId';
+      if (prefs.containsKey(avatarKey)) {
+        _avatarIndex = prefs.getInt(avatarKey) ?? 0;
+      } else {
+        _avatarIndex = 0;
+      }
 
       // Check First Login
-      final prefs = await SharedPreferences.getInstance();
       final key = 'has_logged_in_$_userId';
       if (!prefs.containsKey(key)) {
         _isFirstLogin = true;
@@ -95,11 +127,12 @@ class AuthController extends ChangeNotifier {
 
       notifyListeners();
 
-      // Save to Prefs
       final userData = json.encode({
         'token': _token,
         'userId': _userId,
         'fullName': _fullName,
+        'username': _username,
+        'avatarIndex': _avatarIndex,
       });
       prefs.setString('userData', userData);
     } catch (error) {
@@ -111,6 +144,8 @@ class AuthController extends ChangeNotifier {
     _token = null;
     _userId = null;
     _fullName = null;
+    _username = null;
+    _avatarIndex = 0;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     prefs.remove('userData');

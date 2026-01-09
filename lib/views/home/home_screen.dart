@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../configs/app_colors.dart';
 import 'widgets/checkin_modal.dart';
-import 'widgets/mood_statistics.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/activity_controller.dart';
+import '../../controllers/auth_controller.dart';
 import '../../models/activity_model.dart'; // Fix: Import to see Mood.label extension
 // import 'widgets/activity_item.dart'; // We can inline this for now
 
@@ -56,9 +56,15 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              Text(
-                "Welcome back,\nMinh Duc!",
-                style: Theme.of(context).textTheme.displayLarge,
+              Consumer<AuthController>(
+                builder: (context, auth, _) {
+                  final greeting =
+                      auth.isFirstLogin ? "Hello," : "Welcome back,";
+                  return Text(
+                    "$greeting\n${auth.fullName ?? 'Friend'}!",
+                    style: Theme.of(context).textTheme.displayLarge,
+                  );
+                },
               ),
               const SizedBox(height: 8),
               Text(

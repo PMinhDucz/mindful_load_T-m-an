@@ -39,6 +39,14 @@ class NotificationService {
     );
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+    // Request Android 13+ Permissions
+    final androidImplementation =
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+    }
   }
 
   Future<void> cancelAll() async {
@@ -100,5 +108,24 @@ class NotificationService {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
     return scheduledDate;
+  }
+
+  // --- DEBUG: Show Notification Immediately ---
+  Future<void> showNotificationNow() async {
+    await flutterLocalNotificationsPlugin.show(
+      999, // Unique ID for test
+      'Test Notification 🔔',
+      'Nếu bạn thấy tin nhắn này, chức năng thông báo đang hoạt động tốt!',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_reminder_channel',
+          'Daily Reminders',
+          channelDescription: 'Reminds you to check-in your mood',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
   }
 }

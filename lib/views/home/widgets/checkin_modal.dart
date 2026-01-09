@@ -24,20 +24,19 @@ class _CheckInModalState extends State<CheckInModal> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E), // Dark Dialog
+        backgroundColor: const Color(0xFF2C2C2E),
         title: Text("Add to $category",
             style: const TextStyle(color: Colors.white)),
         content: TextField(
           autofocus: true,
-          style:
-              const TextStyle(color: Colors.white), // White text on Dark Dialog
+          style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
             hintText: "Enter tag name",
             hintStyle: TextStyle(color: Colors.white54),
             enabledBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.white54)),
             focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.green)), // Sage Green
+                borderSide: BorderSide(color: Colors.green)),
           ),
           onChanged: (value) => newTag = value,
         ),
@@ -50,12 +49,50 @@ class _CheckInModalState extends State<CheckInModal> {
             child: Text("Add", style: TextStyle(color: AppColors.primary)),
             onPressed: () {
               if (newTag.isNotEmpty) {
+                // Check duplicate
+                if (controller.tagCategories[category]!.contains(newTag)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Tag already exists!")));
+                  return;
+                }
+
                 controller.addCustomTag(category, newTag);
                 setState(() {
-                  _selectedTags.add(newTag); // Auto select new tag
+                  _selectedTags.add(newTag);
                 });
                 Navigator.pop(context);
               }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteTagDialog(
+      String category, String tag, ActivityController controller) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text("Delete Tag", style: TextStyle(color: Colors.white)),
+        content: Text("Are you sure you want to remove '$tag'?",
+            style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          TextButton(
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            onPressed: () {
+              controller.removeCustomTag(category, tag);
+              setState(() {
+                _selectedTags.remove(tag); // Unselect if it was selected
+              });
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text("Removed '$tag'")));
             },
           ),
         ],
@@ -134,7 +171,7 @@ class _CheckInModalState extends State<CheckInModal> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    "How do you feel?",
+                    "Bạn đang cảm thấy thế nào?",
                     style: Theme.of(context).textTheme.titleLarge,
                     textAlign: TextAlign.center,
                   ),
@@ -249,30 +286,36 @@ class _CheckInModalState extends State<CheckInModal> {
                                     ...entry.value.map((tag) {
                                       final isSelected =
                                           _selectedTags.contains(tag);
-                                      return FilterChip(
-                                        label: Text(tag),
-                                        selected: isSelected,
-                                        onSelected: (bool selected) {
-                                          setState(() {
-                                            if (selected) {
-                                              _selectedTags.add(tag);
-                                            } else {
-                                              _selectedTags.remove(tag);
-                                            }
-                                          });
+                                      return GestureDetector(
+                                        onLongPress: () {
+                                          _showDeleteTagDialog(
+                                              entry.key, tag, controller);
                                         },
-                                        backgroundColor: Colors.white,
-                                        selectedColor: AppColors.primary,
-                                        labelStyle: TextStyle(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.black,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          side: BorderSide.none,
+                                        child: FilterChip(
+                                          label: Text(tag),
+                                          selected: isSelected,
+                                          onSelected: (bool selected) {
+                                            setState(() {
+                                              if (selected) {
+                                                _selectedTags.add(tag);
+                                              } else {
+                                                _selectedTags.remove(tag);
+                                              }
+                                            });
+                                          },
+                                          backgroundColor: Colors.white,
+                                          selectedColor: AppColors.primary,
+                                          labelStyle: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.black,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            side: BorderSide.none,
+                                          ),
                                         ),
                                       );
                                     }),

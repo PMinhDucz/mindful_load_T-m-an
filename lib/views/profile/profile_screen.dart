@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../configs/app_colors.dart';
 import '../../controllers/activity_controller.dart';
+import '../../controllers/auth_controller.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -84,10 +85,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
-          "MinhDuc",
-          style: TextStyle(
-              color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+        Consumer<AuthController>(
+          builder: (context, auth, _) => Text(
+            auth.fullName ?? "User",
+            style: const TextStyle(
+                color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+          ),
         ),
         const Text(
           "Hanoi, Vietnam",

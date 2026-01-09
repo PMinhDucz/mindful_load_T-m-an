@@ -27,7 +27,9 @@ class _NavScreenState extends State<NavScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const SideMenu(), // Enable Drawer here
+      drawer: SideMenu(
+        onProfileTap: () => setState(() => _currentIndex = 3),
+      ),
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

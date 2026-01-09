@@ -20,9 +20,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
 
   Future<void> _submit() async {
-    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+    final name = _fullNameController.text.trim();
+    final email = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Vui lòng điền đầy đủ thông tin')));
+      return;
+    }
+
+    if (name.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Họ tên phải từ 2 ký tự trở lên')));
+      return;
+    }
+
+    // Simple Email Regex check
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vui lòng nhập đúng định dạng Email')));
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mật khẩu phải có ít nhất 6 ký tự')));
       return;
     }
 

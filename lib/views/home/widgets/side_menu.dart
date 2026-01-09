@@ -1,17 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../services/notification_service.dart';
+import '../../auth/welcome_screen.dart';
 
 class SideMenu extends StatefulWidget {
-  const SideMenu({super.key});
+  final VoidCallback? onProfileTap;
+
+  const SideMenu({super.key, this.onProfileTap});
 
   @override
   State<SideMenu> createState() => _SideMenuState();
 }
 
 class _SideMenuState extends State<SideMenu> {
-  bool _notificationsEnabled = true; // Simple local state for demo
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifPrefs();
+  }
+
+  Future<void> _loadNotifPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,46 +40,57 @@ class _SideMenuState extends State<SideMenu> {
         child: Column(
           children: [
             // User Info Header
-            Container(
-              margin: const EdgeInsets.all(20),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.grey[400],
-                    child:
-                        const Icon(Icons.person, color: Colors.white, size: 30),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.isAuthenticated
-                            ? "User #${user.userId}"
-                            : "Minh Duc",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+            GestureDetector(
+              onTap: () {
+                if (widget.onProfileTap != null) {
+                  Navigator.pop(context); // Close drawer
+                  widget.onProfileTap!();
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Colors.grey[400],
+                      child: const Icon(Icons.person,
+                          color: Colors.white, size: 30),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.isAuthenticated
+                                ? (user.fullName ?? "User")
+                                : "Guest",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Vietnam", // Location placeholder (keep simple for now)
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        "Vietnam",
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -83,11 +111,30 @@ class _SideMenuState extends State<SideMenu> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text("Notifications",
                         style: TextStyle(color: Colors.white, fontSize: 15)),
+                    subtitle: _notificationsEnabled
+                        ? GestureDetector(
+                            onTap: () {
+                              NotificationService().showNotificationNow();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          "Đã gửi thông báo test! Hãy kiểm tra thanh trạng thái.")));
+                            },
+                            child: const Text(
+                              "Test Now (Click me)",
+                              style: TextStyle(
+                                  color: Colors.greenAccent, fontSize: 12),
+                            ),
+                          )
+                        : null,
                     trailing: Switch(
                       value: _notificationsEnabled,
                       activeColor: Colors.green,
-                      onChanged: (val) {
+                      onChanged: (val) async {
                         setState(() => _notificationsEnabled = val);
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('notifications_enabled', val);
+
                         if (val) {
                           NotificationService().scheduleRandomNotifications();
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -122,7 +169,13 @@ class _SideMenuState extends State<SideMenu> {
                     // Close Drawer first
                     Navigator.pop(context);
                     await auth.logout();
-                    // AuthController listener in MyApp will handle redirect
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                            builder: (context) => const WelcomeScreen()),
+                        (route) => false,
+                      );
+                    }
                   }),
                   _buildDivider(),
                 ],

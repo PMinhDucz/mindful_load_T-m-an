@@ -204,6 +204,16 @@ class ActivityController extends ChangeNotifier {
     }
   }
 
+  Future<void> removeCustomTag(String category, String tag) async {
+    if (_tagCategories.containsKey(category)) {
+      if (_tagCategories[category]!.contains(tag)) {
+        _tagCategories[category]!.remove(tag);
+        notifyListeners();
+        await _saveTags();
+      }
+    }
+  }
+
   Future<void> _saveTags() async {
     final prefs = await SharedPreferences.getInstance();
     // We only need to save the "Custom" ones really, but saving the whole map is easier for now

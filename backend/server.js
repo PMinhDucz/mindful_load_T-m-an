@@ -11,34 +11,48 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // --- 1. AUTHENTICATION ROUTES ---
+const bcrypt = require('bcryptjs');
 
 // REGISTER
 app.post('/api/auth/register', async (req, res) => {
     const { username, password, fullName } = req.body;
 
-    // Validation
-    if (!username || !password) {
-        return res.status(400).json({ error: 'Vui lòng nhập Username và Password.' });
+    // 1. Validation Logic
+    if (!username || !password || !fullName) {
+        return res.status(400).json({ error: 'Vui lòng điền đầy đủ: Tên, Email và Mật khẩu.' });
     }
-    if (username.length < 3) {
-        return res.status(400).json({ error: 'Username phải từ 3 ký tự trở lên.' });
+
+    // Validate Full Name
+    if (fullName.trim().length < 2) {
+        return res.status(400).json({ error: 'Họ tên phải từ 2 ký tự trở lên.' });
     }
+
+    // Validate Username (Accepts Email format or Alphanumeric)
+    // Allowed: letters, numbers, underscores, dots, @, hyphens
+    const usernameRegex = /^[a-zA-Z0-9_@.-]{3,50}$/;
+    if (!usernameRegex.test(username)) {
+        return res.status(400).json({ error: 'Email/Username không hợp lệ (Không chứa ký tự đặc biệt ngoài @ . _ -).' });
+    }
+
     if (password.length < 6) {
-        return res.status(400).json({ error: 'Password phải từ 6 ký tự trở lên.' });
+        return res.status(400).json({ error: 'Mật khẩu phải từ 6 ký tự trở lên.' });
     }
 
     try {
-        // Check duplicates
+        // 2. Check duplicates
         const [existing] = await db.query('SELECT id FROM users WHERE username = ?', [username]);
         if (existing.length > 0) {
             return res.status(409).json({ error: 'Username này đã tồn tại.' });
         }
 
-        // Insert User
-        // NOTE: In production, password MUST be hashed (bcrypt). Storing plaintext for demo simplicity as requested.
+        // 3. Hash Password (SECURITY UPGRADE)
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // 4. Insert User
         const [result] = await db.query(
             'INSERT INTO users (username, password, full_name) VALUES (?, ?, ?)',
-            [username, password, fullName || '']
+            [username, hashedPassword, fullName || '']
         );
 
         res.status(201).json({
@@ -56,45 +70,39 @@ app.post('/api/auth/register', async (req, res) => {
 // LOGIN
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
-    console.log(`----------------------------------------------------------------`);
-    console.log(`[LOGIN DEBUG] Request received for Username: '${username}' with Password length: ${password ? password.length : 0}`);
 
     if (!username || !password) {
         return res.status(400).json({ error: 'Thiếu thông tin đăng nhập.' });
     }
 
     try {
-        // 1. Check Exact Match
-        const [users] = await db.query('SELECT * FROM users WHERE username = ? AND password = ?', [username, password]);
+        // 1. Find User by Username
+        const [users] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
 
-        if (users.length > 0) {
-            console.log(`[LOGIN SUCCESS] User found: ID ${users[0].id}`);
-            const user = users[0];
-            return res.json({
-                success: true,
-                user: {
-                    id: user.id,
-                    username: user.username,
-                    fullName: user.full_name
-                },
-                token: "mock-jwt-token-" + user.id
-            });
+        if (users.length === 0) {
+            return res.status(401).json({ error: 'Sai tên đăng nhập hoặc mật khẩu.' });
         }
 
-        // 2. Debug: If failed, check if user exists at all
-        console.log(`[LOGIN FAIL] No exact match. Checking if user exists...`);
-        const [checkUser] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+        const user = users[0];
 
-        if (checkUser.length > 0) {
-            console.log(`[LOGIN DEBUG] User '${username}' EXISTS in DB.`);
-            console.log(`[LOGIN DEBUG] Input Password: '${password}'`);
-            console.log(`[LOGIN DEBUG] DB Password:    '${checkUser[0].password}'`);
-            console.log(`[LOGIN DEBUG] Match? ${password === checkUser[0].password}`);
-        } else {
-            console.log(`[LOGIN DEBUG] User '${username}' does NOT exist in DB.`);
+        // 2. Compare Password (bcrypt)
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Sai tên đăng nhập hoặc mật khẩu.' });
         }
 
-        return res.status(401).json({ error: 'Sai tên đăng nhập hoặc mật khẩu.' });
+        // 3. Success
+        console.log(`[LOGIN SUCCESS] User: ${user.username}`);
+        return res.json({
+            success: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                fullName: user.full_name
+            },
+            token: "mock-jwt-token-" + user.id // In real app, use jsonwebtoken here
+        });
 
     } catch (err) {
         console.error('[LOGIN ERROR]', err);
@@ -269,7 +277,8 @@ app.get('/api/analyze', requireAuth, async (req, res) => {
                         }
                     }
                     const percent = Math.round(negRatio * 100);
-                    insights.push(`⚠️ Cảnh báo: 'Tâm An' nhận thấy ${percent}% những lần bạn [${tag}] đều cảm thấy '${topMood}'.`);
+                    // SRS FR2.2 Suggestion 1 format
+                    insights.push(`🔍 Tâm An nhận thấy: ${percent}% các lần bạn check-in '${topMood}' đều liên quan đến tag [${tag}].`);
                     foundTrigger = true;
                 }
             }
@@ -289,11 +298,50 @@ app.get('/api/analyze', requireAuth, async (req, res) => {
             }
         }
 
-        // --- Analysis 4: Time of Day (Optional Simple Check) ---
-        // Check for specific hour patterns? (Simplified for now)
+        // --- Analysis 4: Time & Day Patterns (The "Sherlock" Logic) ---
+        // Bucket data: { "Mon-Afternoon": { total: 0, negative: 0, topMood: '' } }
+        const timeMap = {};
+        const periods = ['Sáng', 'Chiều', 'Tối', 'Đêm']; // 6-12, 12-18, 18-24, 0-6
 
-        if (!foundTrigger && insights.length < 3) {
-            insights.push("💡 Hãy check-in đa dạng các hoạt động hơn để tìm ra nguyên nhân gây stress nhé.");
+        data.forEach(r => {
+            const date = new Date(r.timestamp);
+            const day = date.toLocaleDateString('vi-VN', { weekday: 'long' }); // Thứ Hai
+            const hour = date.getHours();
+
+            let period = 'Đêm';
+            if (hour >= 6 && hour < 12) period = 'Sáng';
+            else if (hour >= 12 && hour < 18) period = 'Chiều';
+            else if (hour >= 18) period = 'Tối';
+
+            const key = `${day} ${period}`; // e.g., "Thứ Hai Chiều"
+
+            if (!timeMap[key]) timeMap[key] = { total: 0, counts: {} };
+            timeMap[key].total++;
+            timeMap[key].counts[r.mood] = (timeMap[key].counts[r.mood] || 0) + 1;
+        });
+
+        // Analyze Buckets
+        for (const [key, stat] of Object.entries(timeMap)) {
+            if (stat.total >= 3) { // Min 3 logs in this timeframe
+                // Find top mood in this bucket
+                let topMood = '';
+                let topCount = 0;
+                for (const [m, c] of Object.entries(stat.counts)) {
+                    if (c > topCount) {
+                        topCount = c;
+                        topMood = m;
+                    }
+                }
+
+                const ratio = topCount / stat.total;
+                if (ratio >= 0.65) { // 65% consistency
+                    insights.push(`🕵️ Thám tử AI: Vào ${key}, bạn thường cảm thấy '${topMood}' (${Math.round(ratio * 100)}%).`);
+                }
+            }
+        }
+
+        if (insights.length < 3) {
+            insights.push("💡 Hãy check-in thường xuyên hơn để AI học được thói quen của bạn nhé.");
         }
 
         res.json({ insights });

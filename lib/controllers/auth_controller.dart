@@ -12,6 +12,9 @@ class AuthController extends ChangeNotifier {
   bool get isAuthenticated => _token != null;
   String? get token => _token;
   String? get userId => _userId;
+  String? get fullName => _fullName;
+  bool _isFirstLogin = true; // Default
+  bool get isFirstLogin => _isFirstLogin;
 
   String get baseUrl {
     if (Platform.isAndroid) return 'http://10.0.2.2:3000/api/auth';
@@ -30,6 +33,7 @@ class AuthController extends ChangeNotifier {
       _token = extractedUserData['token'];
       _userId = extractedUserData['userId'];
       _fullName = extractedUserData['fullName'];
+      _isFirstLogin = false; // Auto login means they have been here before
       notifyListeners();
     }
   }
@@ -79,10 +83,19 @@ class AuthController extends ChangeNotifier {
       _userId = responseData['user']['id'].toString();
       _fullName = responseData['user']['fullName'];
 
+      // Check First Login
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'has_logged_in_$_userId';
+      if (!prefs.containsKey(key)) {
+        _isFirstLogin = true;
+        await prefs.setBool(key, true);
+      } else {
+        _isFirstLogin = false;
+      }
+
       notifyListeners();
 
       // Save to Prefs
-      final prefs = await SharedPreferences.getInstance();
       final userData = json.encode({
         'token': _token,
         'userId': _userId,

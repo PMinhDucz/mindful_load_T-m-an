@@ -66,12 +66,7 @@
 
 ---
 
-## 🔐 Tài khoản Demo (Nếu có)
-*   **Username**: `demo`
-*   **Password**: `123456`
-*(Hoặc bạn có thể đăng ký tài khoản mới ngay trên App)*
 
----
 
 ## 📂 Cấu trúc dự án
 *   `lib/controllers/`: Xử lý Logic, gọi API (MVC Pattern).
@@ -81,4 +76,4 @@
 *   `backend/`: Mã nguồn Node.js server và Database script.
 
 ---
-**Made with ❤️ by [Your Name]**
+**Made with ❤️ by Minh Duc**
